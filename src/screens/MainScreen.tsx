@@ -11,8 +11,8 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { AudioSession, useTracks, useTrackVolume, useRoomContext } from '@livekit/react-native';
-import { Track } from 'livekit-client';
+import { AudioSession, useRoomContext, LiveKitRoom } from '@livekit/react-native';
+import { Room } from 'livekit-client';
 import { LanguageDropdown } from '../components/LanguageDropdown';
 import { Language, NavigationParamList } from '../types';
 import { defaultSourceLanguage, defaultTargetLanguage, getLanguageByCode } from '../constants/languages';
@@ -34,12 +34,63 @@ const SettingsIcon = () => (
   </Svg>
 );
 
+// Minimal component to handle room monitoring inside LiveKitRoom
+interface RoomMonitorProps {
+  recordingState: 'off' | 'connecting' | 'recording';
+  sourceLanguage: Language;
+  targetLanguage: Language;
+  onCreditsDepletedCallback: () => void;
+  onStartTracking: (lang1: string, lang2: string) => Promise<void>;
+  onStopTracking: () => Promise<void>;
+  onRoomReady: (room: Room) => void;
+}
+
+const RoomMonitor: React.FC<RoomMonitorProps> = ({
+  recordingState,
+  sourceLanguage,
+  targetLanguage,
+  onCreditsDepletedCallback,
+  onStartTracking,
+  onStopTracking,
+  onRoomReady,
+}) => {
+  const room = useRoomContext();
+  const { startTracking, stopTracking, isTracking } = useTrackUsage({
+    room,
+    onCreditsDepletedCallback,
+  });
+
+  // Notify parent when room is ready
+  useEffect(() => {
+    if (room) {
+      onRoomReady(room);
+    }
+  }, [room, onRoomReady]);
+
+  // Handle tracking based on recording state
+  useEffect(() => {
+    if (recordingState === 'recording' && room?.state === 'connected' && !isTracking) {
+      // Start tracking when recording begins
+      startTracking(sourceLanguage.code, targetLanguage.code);
+      onStartTracking(sourceLanguage.code, targetLanguage.code);
+    } else if (recordingState === 'off' && isTracking) {
+      // Stop tracking when recording ends
+      stopTracking();
+      onStopTracking();
+    }
+  }, [recordingState, room, isTracking, sourceLanguage, targetLanguage, startTracking, stopTracking, onStartTracking, onStopTracking]);
+
+  return null;
+};
+
 export const MainScreen: React.FC = () => {
   const navigation = useNavigation<MainScreenNavigationProp>();
   const [sourceLanguage, setSourceLanguage] = useState<Language>(defaultSourceLanguage);
   const [targetLanguage, setTargetLanguage] = useState<Language>(defaultTargetLanguage);
   const [recordingState, setRecordingState] = useState<'off' | 'connecting' | 'recording'>('off');
   const [seconds, setSeconds] = useState(0);
+  const [room, setRoom] = useState<Room | null>(null);
+  const [isTracking, setIsTracking] = useState(false);
 
   // User and credit system hooks
   const { convexUser } = useCurrentUser();
@@ -51,10 +102,7 @@ export const MainScreen: React.FC = () => {
     languageB: targetLanguage,
   });
 
-  // Get room from LiveKit context
-  const room = useRoomContext();
-
-  // Credit tracking with LiveKit room monitoring
+  // Credit tracking callback
   const handleCreditsDepletedCallback = useCallback(() => {
     // Disconnect from LiveKit room when credits are depleted
     disconnect();
@@ -75,15 +123,17 @@ export const MainScreen: React.FC = () => {
     );
   }, [disconnect, navigation]);
 
-  const { startTracking, stopTracking, isTracking, sessionCreditsUsed, sessionSecondsUsed, roomConnectionState } = useTrackUsage({
-    room,
-    onCreditsDepletedCallback: handleCreditsDepletedCallback,
-  });
+  const handleStartTracking = useCallback(async (lang1: string, lang2: string) => {
+    setIsTracking(true);
+  }, []);
 
-  // Get microphone track for audio visualization
-  const microphoneTracks = useTracks([Track.Source.Microphone]);
-  const microphoneTrack = microphoneTracks.length > 0 ? microphoneTracks[0] : undefined;
-  const audioVolume = useTrackVolume(microphoneTrack);
+  const handleStopTracking = useCallback(async () => {
+    setIsTracking(false);
+  }, []);
+
+  const handleRoomReady = useCallback((newRoom: Room) => {
+    setRoom(newRoom);
+  }, []);
   
   // Animation values for record button
   const buttonRotateAnim = useRef(new Animated.Value(0)).current;
@@ -93,7 +143,6 @@ export const MainScreen: React.FC = () => {
   const pulseAnim2 = useRef(new Animated.Value(0)).current;
   const pulseAnim3 = useRef(new Animated.Value(0)).current;
   const timerOpacity = useRef(new Animated.Value(0)).current;
-  const audioPulseAnim = useRef(new Animated.Value(0)).current;
   
   // Animation values for settings button
   const settingsRotateAnim = useRef(new Animated.Value(0)).current;
@@ -146,30 +195,6 @@ export const MainScreen: React.FC = () => {
       AudioSession.stopAudioSession();
     };
   }, []);
-
-  // Audio level visualization effect
-  useEffect(() => {
-    if (recordingState === 'recording' && audioVolume > 0) {
-      // Animate pulse based on audio volume
-      // Map volume (0-1) to scale (1-1.5)
-      const targetScale = 1 + (audioVolume * 0.5);
-
-      Animated.spring(audioPulseAnim, {
-        toValue: targetScale,
-        useNativeDriver: true,
-        friction: 5,
-        tension: 40,
-      }).start();
-    } else {
-      // Reset to neutral when not recording or no audio
-      Animated.spring(audioPulseAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 40,
-      }).start();
-    }
-  }, [audioVolume, recordingState]);
 
   // Timer effect - separate from recording state to avoid cleanup issues
   useEffect(() => {
@@ -486,22 +511,11 @@ export const MainScreen: React.FC = () => {
         await connect();
 
         // After 3 seconds (simulating connection time), switch to recording
-        connectingTimer.current = setTimeout(async () => {
-          // Verify room is actually connected before starting tracking
+        connectingTimer.current = setTimeout(() => {
+          // Verify room is actually connected before starting recording
           if (room && room.state === 'connected') {
             setRecordingState('recording');
             startRecordingAnimation();
-
-            // Start tracking usage
-            try {
-              await startTracking(sourceLanguage.code, targetLanguage.code);
-            } catch (error) {
-              console.error('Failed to start tracking:', error);
-              Alert.alert('Error', 'Failed to start credit tracking. Please try again.');
-              setRecordingState('off');
-              stopAllAnimations();
-              disconnect();
-            }
           } else {
             console.error('Room not connected after timeout');
             setRecordingState('off');
@@ -523,13 +537,6 @@ export const MainScreen: React.FC = () => {
 
       // Disconnect from LiveKit room
       disconnect();
-
-      // Stop tracking usage
-      try {
-        await stopTracking();
-      } catch (error) {
-        console.error('Failed to stop tracking:', error);
-      }
 
       // Success pulse animation
       Animated.sequence([
@@ -670,18 +677,13 @@ export const MainScreen: React.FC = () => {
       outputRange: index === 0 ? [0, 0.4, 0] : index === 1 ? [0, 0.2, 0] : [0, 0.1, 0],
     });
 
-    // Combine regular pulse with audio-reactive pulse when recording
-    const combinedScale = recordingState === 'recording'
-      ? Animated.multiply(scale, audioPulseAnim)
-      : scale;
-
     return {
       opacity,
-      transform: [{ scale: combinedScale }],
+      transform: [{ scale }],
     };
   };
 
-  return (
+  const content = (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <LanguageDropdown
@@ -762,7 +764,7 @@ export const MainScreen: React.FC = () => {
                 },
               ]}
             />
-            
+
             {/* Pulse rings - using separate styles to avoid borderWidth animation */}
             <Animated.View
               pointerEvents="none"
@@ -807,6 +809,32 @@ export const MainScreen: React.FC = () => {
       </View>
     </SafeAreaView>
   );
+
+  // Wrap with LiveKitRoom when we have a token
+  if (connectionState.token && connectionState.url) {
+    return (
+      <LiveKitRoom
+        serverUrl={connectionState.url}
+        token={connectionState.token}
+        connect={true}
+        audio={true}
+        video={false}
+      >
+        <RoomMonitor
+          recordingState={recordingState}
+          sourceLanguage={sourceLanguage}
+          targetLanguage={targetLanguage}
+          onCreditsDepletedCallback={handleCreditsDepletedCallback}
+          onStartTracking={handleStartTracking}
+          onStopTracking={handleStopTracking}
+          onRoomReady={handleRoomReady}
+        />
+        {content}
+      </LiveKitRoom>
+    );
+  }
+
+  return content;
 };
 
 const styles = StyleSheet.create({

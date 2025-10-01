@@ -15,8 +15,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs microphone access for voice translation"
-      }
+        "NSMicrophoneUsageDescription": "This app needs microphone access for voice translation",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.vebjorn.TolKI"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +30,8 @@
       "permissions": [
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS"
-      ]
+      ],
+      "package": "com.vebjorn.TolKI"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,7 +42,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "adc75d60-7b56-4710-a2d1-78b64ea6dc37"
+        "projectId": "e600a97b-2232-4f69-8660-6c5de084abac"
       }
     }
   }
