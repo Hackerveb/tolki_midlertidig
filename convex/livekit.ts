@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { AccessToken } from "livekit-server-sdk";
+import { RoomConfiguration } from "@livekit/protocol";
 
 // Generate LiveKit access token for authenticated user
 export const generateToken = action({
@@ -42,7 +43,7 @@ export const generateToken = action({
       );
     }
 
-    // Create LiveKit access token
+    // Create LiveKit access token with agent configuration
     const at = new AccessToken(apiKey, apiSecret, {
       identity: args.clerkId,
       // Include user metadata in the token
@@ -51,6 +52,23 @@ export const generateToken = action({
         language2: args.language2,
         userId: user._id,
       }),
+    });
+
+    // CRITICAL: Configure room to launch the Translator agent
+    // This tells LiveKit to automatically spawn the agent when room is created
+    at.roomConfig = new RoomConfiguration({
+      agents: [
+        {
+          agentName: "Translator", // Must match agent deployed on LiveKit server
+        },
+      ],
+    });
+
+    console.log("Generated LiveKit token with configuration:", {
+      roomName: args.roomName,
+      agentName: "Translator",
+      hasRoomConfig: !!at.roomConfig,
+      languages: { language1: args.language1, language2: args.language2 },
     });
 
     // Grant permission to join the room

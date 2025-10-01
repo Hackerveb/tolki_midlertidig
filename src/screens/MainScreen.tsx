@@ -63,9 +63,22 @@ const RoomMonitor: React.FC<RoomMonitorProps> = ({
   // Notify parent when room is ready
   useEffect(() => {
     if (room) {
+      console.log('RoomMonitor: Room object received, state:', room.state);
       onRoomReady(room);
     }
   }, [room, onRoomReady]);
+
+  // Monitor room state changes for debugging
+  useEffect(() => {
+    if (room) {
+      console.log('RoomMonitor: Room state changed to:', room.state);
+
+      // Log participants when room is connected
+      if (room.state === 'connected') {
+        console.log('Room connected! Participants:', room.remoteParticipants.size);
+      }
+    }
+  }, [room?.state]);
 
   // Handle tracking based on recording state
   useEffect(() => {
@@ -510,20 +523,25 @@ export const MainScreen: React.FC = () => {
       try {
         await connect();
 
-        // After 3 seconds (simulating connection time), switch to recording
+        // After 10 seconds (allowing time for agent spawn and connection), switch to recording
         connectingTimer.current = setTimeout(() => {
           // Verify room is actually connected before starting recording
           if (room && room.state === 'connected') {
+            console.log('Room connected successfully, starting recording');
             setRecordingState('recording');
             startRecordingAnimation();
           } else {
-            console.error('Room not connected after timeout');
+            console.error('Room not connected after timeout. Room state:', room?.state);
+            console.error('Room object exists:', !!room);
             setRecordingState('off');
             stopAllAnimations();
-            Alert.alert('Connection Error', 'Failed to establish connection. Please try again.');
+            Alert.alert(
+              'Connection Error',
+              'Failed to establish connection. Please verify the Translator agent is running on your LiveKit server.'
+            );
             disconnect();
           }
-        }, 3000);
+        }, 10000);
       } catch (error) {
         console.error('Failed to connect to LiveKit:', error);
         setRecordingState('off');
