@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AudioSession, useRoomContext, LiveKitRoom } from '@livekit/react-native';
-import { Room } from 'livekit-client';
+import { Room, ConnectionState } from 'livekit-client';
 import { LanguageDropdown } from '../components/LanguageDropdown';
 import { Language, NavigationParamList } from '../types';
 import { defaultSourceLanguage, defaultTargetLanguage, getLanguageByCode } from '../constants/languages';
@@ -43,6 +43,7 @@ interface RoomMonitorProps {
   onStartTracking: (lang1: string, lang2: string) => Promise<void>;
   onStopTracking: () => Promise<void>;
   onRoomReady: (room: Room) => void;
+  onRoomConnected: () => void;
 }
 
 const RoomMonitor: React.FC<RoomMonitorProps> = ({
@@ -53,6 +54,7 @@ const RoomMonitor: React.FC<RoomMonitorProps> = ({
   onStartTracking,
   onStopTracking,
   onRoomReady,
+  onRoomConnected,
 }) => {
   const room = useRoomContext();
   const { startTracking, stopTracking, isTracking } = useTrackUsage({
@@ -80,8 +82,42 @@ const RoomMonitor: React.FC<RoomMonitorProps> = ({
     }
   }, [room?.state]);
 
+  // Listen for room connection event and trigger callback
+  useEffect(() => {
+    if (!room) return;
+
+    const handleConnectionStateChange = (state: ConnectionState) => {
+      console.log('[RoomMonitor] Connection state changed to:', state);
+      if (state === ConnectionState.Connected) {
+        console.log('[RoomMonitor] Room connected - calling onRoomConnected callback');
+        onRoomConnected();
+      }
+    };
+
+    // Set up listener
+    room.on('connectionStateChanged', handleConnectionStateChange);
+
+    // Check if already connected (in case we mounted after connection)
+    if (room.state === ConnectionState.Connected) {
+      console.log('[RoomMonitor] Room already connected on mount');
+      onRoomConnected();
+    }
+
+    return () => {
+      room.off('connectionStateChanged', handleConnectionStateChange);
+    };
+  }, [room, onRoomConnected]);
+
   // Handle tracking based on recording state
   useEffect(() => {
+    // Debug log to track state changes
+    console.log('[RoomMonitor] Recording state changed:', {
+      recordingState,
+      roomState: room?.state,
+      isTracking,
+      willStartTracking: recordingState === 'recording' && room?.state === 'connected' && !isTracking
+    });
+
     if (recordingState === 'recording' && room?.state === 'connected' && !isTracking) {
       // Start tracking when recording begins
       startTracking(sourceLanguage.code, targetLanguage.code);
@@ -91,7 +127,16 @@ const RoomMonitor: React.FC<RoomMonitorProps> = ({
       stopTracking();
       onStopTracking();
     }
-  }, [recordingState, room, isTracking, sourceLanguage, targetLanguage, startTracking, stopTracking, onStartTracking, onStopTracking]);
+
+    // Cleanup: Always stop tracking when component unmounts
+    return () => {
+      if (isTracking) {
+        console.log('[RoomMonitor] Unmounting - stopping tracking');
+        stopTracking();
+        onStopTracking();
+      }
+    };
+  }, [recordingState, room?.state, isTracking, sourceLanguage, targetLanguage, startTracking, stopTracking, onStartTracking, onStopTracking]);
 
   return null;
 };
@@ -102,7 +147,7 @@ export const MainScreen: React.FC = () => {
   const [targetLanguage, setTargetLanguage] = useState<Language>(defaultTargetLanguage);
   const [recordingState, setRecordingState] = useState<'off' | 'connecting' | 'recording'>('off');
   const [seconds, setSeconds] = useState(0);
-  const [room, setRoom] = useState<Room | null>(null);
+  const roomRef = useRef<Room | null>(null);
   const [isTracking, setIsTracking] = useState(false);
 
   // User and credit system hooks
@@ -145,8 +190,17 @@ export const MainScreen: React.FC = () => {
   }, []);
 
   const handleRoomReady = useCallback((newRoom: Room) => {
-    setRoom(newRoom);
+    roomRef.current = newRoom;
   }, []);
+
+  const handleRoomConnected = useCallback(() => {
+    console.log('[MainScreen] Room connected event received');
+    if (recordingState === 'connecting') {
+      console.log('[MainScreen] Transitioning to recording state');
+      setRecordingState('recording');
+      startRecordingAnimation();
+    }
+  }, [recordingState]);
   
   // Animation values for record button
   const buttonRotateAnim = useRef(new Animated.Value(0)).current;
@@ -163,6 +217,7 @@ export const MainScreen: React.FC = () => {
   
   const buttonRotateAnimation = useRef<Animated.CompositeAnimation | null>(null);
   const iconRotateAnimation = useRef<Animated.CompositeAnimation | null>(null);
+  const pulseAnimation = useRef<Animated.CompositeAnimation | null>(null);
   const connectingTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Set user's default language when data loads
@@ -268,17 +323,68 @@ export const MainScreen: React.FC = () => {
     pulseAnim2.setValue(0);
     pulseAnim3.setValue(0);
 
-    // Animate the entire button rotation and scale (like in HTML)
+    // SYNCHRONIZED rotation + scale animation (matching HTML exactly)
+    // HTML keyframes: 0%→25%→50%→75%→100% over 1200ms
+    // Each segment is 300ms (25% of 1200ms)
     buttonRotateAnimation.current = Animated.loop(
-      Animated.timing(buttonRotateAnim, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: true,
-      })
+      Animated.sequence([
+        // 0% → 25%: scale(1→1.05) rotate(0°→90°)
+        Animated.parallel([
+          Animated.timing(buttonScaleAnim, {
+            toValue: 1.05,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(buttonRotateAnim, {
+            toValue: 0.25, // 25% of full rotation
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+        // 25% → 50%: scale(1.05→1.08) rotate(90°→180°)
+        Animated.parallel([
+          Animated.timing(buttonScaleAnim, {
+            toValue: 1.08,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(buttonRotateAnim, {
+            toValue: 0.5, // 50% of full rotation
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+        // 50% → 75%: scale(1.08→1.05) rotate(180°→270°)
+        Animated.parallel([
+          Animated.timing(buttonScaleAnim, {
+            toValue: 1.05,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(buttonRotateAnim, {
+            toValue: 0.75, // 75% of full rotation
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+        // 75% → 100%: scale(1.05→1) rotate(270°→360°)
+        Animated.parallel([
+          Animated.timing(buttonScaleAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(buttonRotateAnim, {
+            toValue: 1, // 100% = full rotation
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
     );
     buttonRotateAnimation.current.start();
 
-    // Icon also spins separately for shimmer effect
+    // Icon spins independently for shimmer effect (0.8s per rotation)
     iconRotateAnimation.current = Animated.loop(
       Animated.timing(iconRotateAnim, {
         toValue: 1,
@@ -288,34 +394,8 @@ export const MainScreen: React.FC = () => {
     );
     iconRotateAnimation.current.start();
 
-    // Scale animation matching HTML keyframes
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(buttonScaleAnim, {
-          toValue: 1.05,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonScaleAnim, {
-          toValue: 1.08,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonScaleAnim, {
-          toValue: 1.05,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonScaleAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Multiple pulse rings
-    Animated.loop(
+    // Multiple pulse rings (matching HTML timing)
+    pulseAnimation.current = Animated.loop(
       Animated.parallel([
         Animated.sequence([
           Animated.timing(pulseAnim1, {
@@ -356,7 +436,8 @@ export const MainScreen: React.FC = () => {
           }),
         ]),
       ])
-    ).start();
+    );
+    pulseAnimation.current.start();
   };
 
   const startRecordingAnimation = () => {
@@ -434,7 +515,8 @@ export const MainScreen: React.FC = () => {
   const stopAllAnimations = () => {
     buttonRotateAnimation.current?.stop();
     iconRotateAnimation.current?.stop();
-    
+    pulseAnimation.current?.stop();
+
     Animated.parallel([
       Animated.timing(buttonRotateAnim, {
         toValue: 0,
@@ -504,44 +586,13 @@ export const MainScreen: React.FC = () => {
       }
 
       setRecordingState('connecting');
-      startConnectingAnimation();
-
-      // Initial press animation
-      Animated.timing(buttonScaleAnim, {
-        toValue: 0.95,
-        duration: 200,
-        useNativeDriver: true,
-      }).start(() => {
-        Animated.timing(buttonScaleAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      });
+      startConnectingAnimation(); // Start immediately, no delay
 
       // Connect to LiveKit room
       try {
         await connect();
-
-        // After 10 seconds (allowing time for agent spawn and connection), switch to recording
-        connectingTimer.current = setTimeout(() => {
-          // Verify room is actually connected before starting recording
-          if (room && room.state === 'connected') {
-            console.log('Room connected successfully, starting recording');
-            setRecordingState('recording');
-            startRecordingAnimation();
-          } else {
-            console.error('Room not connected after timeout. Room state:', room?.state);
-            console.error('Room object exists:', !!room);
-            setRecordingState('off');
-            stopAllAnimations();
-            Alert.alert(
-              'Connection Error',
-              'Failed to establish connection. Please verify the Translator agent is running on your LiveKit server.'
-            );
-            disconnect();
-          }
-        }, 10000);
+        // Room connection will be handled by RoomMonitor's event listener
+        // which will call handleRoomConnected when truly connected
       } catch (error) {
         console.error('Failed to connect to LiveKit:', error);
         setRecordingState('off');
@@ -765,7 +816,7 @@ export const MainScreen: React.FC = () => {
               {
                 transform: [
                   { scale: buttonScaleAnim },
-                  { rotate: recordingState === 'connecting' ? buttonRotation : '0deg' },
+                  { rotate: buttonRotation },
                 ],
               },
             ]}
@@ -777,7 +828,7 @@ export const MainScreen: React.FC = () => {
                   backgroundColor: getIconColor(),
                   borderRadius: getIconBorderRadius(),
                   transform: [
-                    { rotate: recordingState === 'connecting' ? iconRotation : '0deg' },
+                    { rotate: iconRotation },
                   ],
                 },
               ]}
@@ -846,6 +897,7 @@ export const MainScreen: React.FC = () => {
           onStartTracking={handleStartTracking}
           onStopTracking={handleStopTracking}
           onRoomReady={handleRoomReady}
+          onRoomConnected={handleRoomConnected}
         />
         {content}
       </LiveKitRoom>

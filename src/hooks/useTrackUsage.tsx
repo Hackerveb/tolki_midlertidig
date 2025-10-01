@@ -83,9 +83,21 @@ export const useTrackUsage = (params?: UseTrackUsageParams) => {
   }, [room, isTracking, stopTracking]);
 
   // Start tracking usage
-  const startTracking = async (languageFrom: string, languageTo: string) => {
+  const startTracking = useCallback(async (languageFrom: string, languageTo: string) => {
     if (!clerkUser?.id) {
       throw new Error('User not authenticated');
+    }
+
+    // Guard against duplicate intervals
+    if (intervalRef.current) {
+      console.warn('[useTrackUsage] Interval already running, clearing before starting new one');
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    if (isTracking) {
+      console.warn('[useTrackUsage] Already tracking, skipping duplicate call');
+      return sessionId;
     }
 
     try {
@@ -102,18 +114,16 @@ export const useTrackUsage = (params?: UseTrackUsageParams) => {
       setSessionSecondsUsed(3); // Minimum 3 seconds
       startTimeRef.current = Date.now();
 
+      console.log('[useTrackUsage] Starting credit deduction interval. First deduction at session start.');
+
       // Start interval to deduct credits every 3 seconds
       intervalRef.current = setInterval(async () => {
         try {
-          // Only deduct credits if room is connected
-          if (room && room.state !== ConnectionState.Connected) {
-            console.log('Room not connected, skipping credit deduction');
-            return;
-          }
-
           // Calculate actual seconds elapsed
           const actualSeconds = Math.floor((Date.now() - (startTimeRef.current || Date.now())) / 1000);
           const secondsToAdd = 3; // Add 3 seconds each interval
+
+          console.log('[Credit Deduction]', new Date().toISOString(), 'Deducting 0.05 credits');
 
           const result = await updateFractionalCredits({
             clerkId: clerkUser.id,
@@ -148,7 +158,7 @@ export const useTrackUsage = (params?: UseTrackUsageParams) => {
       console.error('Error starting session:', error);
       throw error;
     }
-  };
+  }, [clerkUser?.id, isTracking, sessionId, startSession, updateFractionalCredits, stopTracking, onCreditsDepletedCallback]);
 
   // Cleanup on unmount
   useEffect(() => {
