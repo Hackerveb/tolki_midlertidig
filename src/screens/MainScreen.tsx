@@ -710,7 +710,7 @@ export const MainScreen: React.FC = () => {
 
   const getIconColor = () => {
     if (recordingState === 'recording') return '#e74c3c';
-    return colors.blueMunsell;
+    return colors.primary;
   };
 
   const getIconBorderRadius = () => {
@@ -791,8 +791,11 @@ export const MainScreen: React.FC = () => {
       <View style={styles.mainContent}>
         {/* Credit Display */}
         <View style={styles.creditDisplay}>
-          <Text style={styles.creditNumber}>{balance?.toFixed(2) || '0.00'}</Text>
-          <Text style={styles.creditLabel}>credits remaining</Text>
+          <Text style={styles.creditNumber}>
+            {balance?.toFixed(0) || '0'}
+            <Text style={styles.creditHours}>/{(balance ? balance / 60 : 0).toFixed(1)}hr</Text>
+          </Text>
+          <Text style={styles.creditLabel}>remaining</Text>
           {isTracking && (
             <Text style={styles.usageRate}>Using ~1 credit/minute</Text>
           )}
@@ -996,6 +999,11 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: colors.primary,
+  },
+  creditHours: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.silverAlpha(0.6),
   },
   creditLabel: {
     fontSize: 12,

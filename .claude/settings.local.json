@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/Tolki_privat_utvikling/v1.2.1 livekit react native/external_agent/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

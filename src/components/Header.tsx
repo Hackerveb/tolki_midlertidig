@@ -5,9 +5,7 @@ import {
   StyleSheet,
   Pressable,
   Platform,
-  StatusBar,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { spacing } from '../styles/global';
@@ -27,14 +25,11 @@ export const Header: React.FC<HeaderProps> = ({
   showBack = true,
   transparent = false,
 }) => {
-  const insets = useSafeAreaInsets();
-
   return (
     <View
       style={[
         styles.container,
         {
-          paddingTop: insets.top || StatusBar.currentHeight || 0,
           backgroundColor: transparent ? 'transparent' : colors.background,
         },
       ]}

@@ -145,25 +145,6 @@ export const BillingHistoryScreen: React.FC = () => {
             </NeumorphicCard>
           )}
         </View>
-
-        {/* Export Options */}
-        <NeumorphicCard style={styles.exportCard}>
-          <Text style={styles.exportTitle}>Export Options</Text>
-          <View style={styles.exportButtons}>
-            <Pressable style={styles.exportButton}>
-              <Text style={styles.exportIcon}>📄</Text>
-              <Text style={styles.exportButtonText}>PDF</Text>
-            </Pressable>
-            <Pressable style={styles.exportButton}>
-              <Text style={styles.exportIcon}>📊</Text>
-              <Text style={styles.exportButtonText}>CSV</Text>
-            </Pressable>
-            <Pressable style={styles.exportButton}>
-              <Text style={styles.exportIcon}>📧</Text>
-              <Text style={styles.exportButtonText}>Email</Text>
-            </Pressable>
-          </View>
-        </NeumorphicCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -274,29 +255,5 @@ const styles = StyleSheet.create({
   emptyText: {
     ...typography.body,
     color: colors.silverAlpha(0.6),
-  },
-  exportCard: {
-    margin: spacing.lg,
-    padding: spacing.lg,
-  },
-  exportTitle: {
-    ...typography.h6,
-    color: colors.foreground,
-    marginBottom: spacing.md,
-  },
-  exportButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  exportButton: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  exportIcon: {
-    fontSize: 24,
-  },
-  exportButtonText: {
-    ...typography.caption,
-    color: colors.foreground,
   },
 });
