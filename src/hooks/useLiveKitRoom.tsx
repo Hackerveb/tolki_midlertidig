@@ -93,8 +93,8 @@ export const useLiveKitRoom = ({
       // Call Convex action to generate LiveKit token with language metadata
       const result = await generateToken({
         clerkId: clerkUser.id,
-        language1: languageA.code,
-        language2: languageB.code,
+        language1: languageA.name,
+        language2: languageB.name,
         roomName,
       });
 

@@ -5,10 +5,11 @@ import { Id } from "./_generated/dataModel";
 
 // Credit packages
 export const creditPackages = [
-  { credits: 10, price: 150, label: "10 credits", description: "$1.50" },
-  { credits: 30, price: 400, label: "30 credits", description: "$4.00" },
-  { credits: 60, price: 700, label: "60 credits", description: "$7.00" },
-  { credits: 120, price: 1300, label: "120 credits", description: "$13.00" },
+  { credits: 30, price: 700, label: "30 credits", description: "$7.00" },
+  { credits: 60, price: 1200, label: "60 credits", description: "$12.00" },
+  { credits: 360, price: 6900, label: "360 credits", description: "$69.00" },
+  { credits: 720, price: 12900, label: "720 credits", description: "$129.00" },
+  { credits: 1440, price: 22900, label: "1440 credits", description: "$229.00" },
 ];
 
 // Create a payment intent for purchasing credits

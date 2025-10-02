@@ -7,7 +7,6 @@ import { MainScreen } from '../screens/MainScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { BuyCreditsScreen } from '../screens/BuyCreditsScreen';
-import { PaymentMethodsScreen } from '../screens/PaymentMethodsScreen';
 import { BillingHistoryScreen } from '../screens/BillingHistoryScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
@@ -75,10 +74,6 @@ export const AppNavigator: React.FC = () => {
           <Stack.Screen
             name="BuyCredits"
             component={BuyCreditsScreen}
-          />
-          <Stack.Screen
-            name="PaymentMethods"
-            component={PaymentMethodsScreen}
           />
           <Stack.Screen
             name="BillingHistory"

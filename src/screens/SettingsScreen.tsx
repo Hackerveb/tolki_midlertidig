@@ -200,11 +200,6 @@ export const SettingsScreen: React.FC = () => {
             icon={<ArrowIcon />}
           />
           <ActionButton
-            title="Payment Methods"
-            onPress={() => navigation.navigate('PaymentMethods')}
-            icon={<ArrowIcon />}
-          />
-          <ActionButton
             title="Billing History"
             onPress={() => navigation.navigate('BillingHistory')}
             icon={<ArrowIcon />}

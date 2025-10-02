@@ -25,16 +25,6 @@ export interface Subscription {
   active: boolean;
 }
 
-export interface PaymentMethod {
-  id: string;
-  type: 'card' | 'paypal' | 'apple_pay' | 'google_pay';
-  last4?: string;
-  brand?: string;
-  isDefault: boolean;
-  expiryMonth?: number;
-  expiryYear?: number;
-}
-
 export interface BillingHistoryItem {
   id: string;
   date: Date;
@@ -49,7 +39,6 @@ export type NavigationParamList = {
   Settings: undefined;
   EditProfile: undefined;
   BuyCredits: undefined;
-  PaymentMethods: undefined;
   BillingHistory: undefined;
   SignIn: undefined;
   SignUp: undefined;
