@@ -35,6 +35,7 @@ export interface BillingHistoryItem {
 }
 
 export type NavigationParamList = {
+  Onboarding: undefined;
   Main: undefined;
   Settings: undefined;
   EditProfile: undefined;

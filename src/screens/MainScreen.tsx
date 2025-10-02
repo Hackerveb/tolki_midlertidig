@@ -24,6 +24,8 @@ import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { spacing, radius } from '../styles/global';
 import { shadows } from '../styles/shadows';
+import { hapticFeedback } from '../utils/haptics';
+import { requestMicrophonePermission } from '../utils/permissions';
 
 type MainScreenNavigationProp = StackNavigationProp<NavigationParamList, 'Main'>;
 
@@ -553,9 +555,20 @@ export const MainScreen: React.FC = () => {
 
 
   const handleRecordPress = async () => {
+    // Light haptic feedback on any press
+    await hapticFeedback.light();
+
     if (recordingState === 'off') {
+      // Check microphone permission first
+      const hasPermission = await requestMicrophonePermission();
+      if (!hasPermission) {
+        await hapticFeedback.error();
+        return;
+      }
+
       // Check if user has enough credits (minimum 0.05)
       if (!hasCredits() || balance < 0.05) {
+        await hapticFeedback.warning();
         Alert.alert(
           'Insufficient Credits',
           `You need at least 0.05 credits to start a session (minimum charge). You have ${balance?.toFixed(2) || '0.00'} credits. Would you like to buy more?`,
@@ -563,7 +576,10 @@ export const MainScreen: React.FC = () => {
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Buy Credits',
-              onPress: () => navigation.navigate('BuyCredits')
+              onPress: () => {
+                hapticFeedback.light();
+                navigation.navigate('BuyCredits');
+              }
             },
           ]
         );
@@ -572,19 +588,29 @@ export const MainScreen: React.FC = () => {
 
       // Warning if low on credits
       if (isLowOnCredits) {
+        await hapticFeedback.warning();
         Alert.alert(
           'Low on Credits',
           `You have ${balance?.toFixed(2) || '0.00'} credits remaining. Consider buying more credits.`,
           [
-            { text: 'Continue', style: 'default' },
+            {
+              text: 'Continue',
+              style: 'default',
+              onPress: () => hapticFeedback.light()
+            },
             {
               text: 'Buy Credits',
-              onPress: () => navigation.navigate('BuyCredits')
+              onPress: () => {
+                hapticFeedback.light();
+                navigation.navigate('BuyCredits');
+              }
             },
           ]
         );
       }
 
+      // Medium haptic on successful start
+      await hapticFeedback.medium();
       setRecordingState('connecting');
       startConnectingAnimation(); // Start immediately, no delay
 
@@ -597,10 +623,13 @@ export const MainScreen: React.FC = () => {
         console.error('Failed to connect to LiveKit:', error);
         setRecordingState('off');
         stopAllAnimations();
+        await hapticFeedback.error();
         Alert.alert('Connection Error', 'Failed to connect to translation service. Please try again.');
       }
 
     } else if (recordingState === 'recording') {
+      // Success haptic on stop
+      await hapticFeedback.success();
       setRecordingState('off');
       stopAllAnimations();
 
@@ -648,6 +677,7 @@ export const MainScreen: React.FC = () => {
   };
 
   const handleSettingsPressIn = () => {
+    hapticFeedback.light();
     Animated.parallel([
       Animated.timing(settingsRotateAnim, {
         toValue: 0.25, // 90 degrees
@@ -868,6 +898,19 @@ export const MainScreen: React.FC = () => {
           </Animated.View>
         </Pressable>
 
+        {/* Status Text */}
+        <View style={styles.statusContainer}>
+          {recordingState === 'off' && (
+            <Text style={styles.statusText}>Tap to start translating</Text>
+          )}
+          {recordingState === 'connecting' && (
+            <Text style={styles.statusTextConnecting}>Connecting to translator...</Text>
+          )}
+          {recordingState === 'recording' && (
+            <Text style={styles.statusTextRecording}>🎤 Listening & Translating</Text>
+          )}
+        </View>
+
         <Animated.View
           style={[
             styles.recordingTimer,
@@ -978,8 +1021,29 @@ const styles = StyleSheet.create({
   pulseRingRed: {
     borderColor: 'rgba(231, 76, 60, 0.3)',
   },
+  statusContainer: {
+    marginTop: 20,
+    minHeight: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusText: {
+    fontSize: 14,
+    color: colors.silverAlpha(0.6),
+    fontWeight: '500',
+  },
+  statusTextConnecting: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '500',
+  },
+  statusTextRecording: {
+    fontSize: 14,
+    color: '#e74c3c',
+    fontWeight: '600',
+  },
   recordingTimer: {
-    marginTop: 60,
+    marginTop: 40,
     minHeight: 30,
     alignItems: 'center',
     justifyContent: 'center',

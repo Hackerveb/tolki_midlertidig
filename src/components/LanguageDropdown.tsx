@@ -16,6 +16,7 @@ import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { shadows } from '../styles/shadows';
 import { radius, spacing } from '../styles/global';
+import { hapticFeedback } from '../utils/haptics';
 
 interface LanguageDropdownProps {
   selectedLanguage: Language;
@@ -61,6 +62,7 @@ export const LanguageDropdown: React.FC<LanguageDropdownProps> = ({
   }, []);
 
   const toggleDropdown = () => {
+    hapticFeedback.light(); // Light haptic on dropdown toggle
     if (isOpen) {
       // Close animation
       Animated.parallel([
@@ -97,6 +99,7 @@ export const LanguageDropdown: React.FC<LanguageDropdownProps> = ({
   };
 
   const handleLanguageSelect = (language: Language) => {
+    hapticFeedback.selection(); // Selection haptic on language select
     // Add loading state simulation like in HTML
     setTimeout(() => {
       onLanguageSelect(language);

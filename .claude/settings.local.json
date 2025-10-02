@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//d/Tolki_privat_utvikling/v1.2.1 livekit react native/external_agent/**)"
+      "Read(//d/Tolki_privat_utvikling/v1.2.1 livekit react native/external_agent/**)",
+      "Bash(npx expo install:*)"
     ],
     "deny": [],
     "ask": []

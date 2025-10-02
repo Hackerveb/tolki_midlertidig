@@ -10,6 +10,7 @@ import { BuyCreditsScreen } from '../screens/BuyCreditsScreen';
 import { BillingHistoryScreen } from '../screens/BillingHistoryScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
+import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { colors } from '../styles/colors';
 
 const Stack = createStackNavigator<NavigationParamList>();
@@ -45,13 +46,19 @@ const LoadingView = () => (
 export const AppNavigator: React.FC = () => {
   const { isLoaded, isSignedIn } = useAuth();
 
+  // Show loading while checking auth
   if (!isLoaded) {
     return <LoadingView />;
   }
 
+  // Determine initial route
+  const getInitialRoute = (): keyof NavigationParamList => {
+    return isSignedIn ? 'Main' : 'Onboarding';
+  };
+
   return (
     <Stack.Navigator
-      initialRouteName={isSignedIn ? "Main" : "SignIn"}
+      initialRouteName={getInitialRoute()}
       screenOptions={screenOptions}
     >
       {isSignedIn ? (
@@ -82,6 +89,14 @@ export const AppNavigator: React.FC = () => {
         </>
       ) : (
         <>
+          {/* Onboarding (shown to all unauthenticated users first) */}
+          <Stack.Screen
+            name="Onboarding"
+            component={OnboardingScreen}
+            options={{
+              animationEnabled: false,
+            }}
+          />
           <Stack.Screen
             name="SignIn"
             component={SignInScreen}

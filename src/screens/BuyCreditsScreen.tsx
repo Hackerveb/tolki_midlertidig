@@ -18,6 +18,7 @@ import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { spacing, radius } from '../styles/global';
 import { shadows } from '../styles/shadows';
+import { hapticFeedback } from '../utils/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDER_WIDTH = SCREEN_WIDTH - (spacing.lg * 2);
@@ -79,6 +80,7 @@ export const BuyCreditsScreen: React.FC = () => {
     if (packageId === selectedPackageId) return;
 
     setSelectedPackageId(packageId);
+    hapticFeedback.selection(); // Selection haptic
 
     // Pulse price card
     Animated.sequence([
@@ -137,6 +139,7 @@ export const BuyCreditsScreen: React.FC = () => {
     if (packageId === selectedPackageId) return;
 
     setSelectedPackageId(packageId);
+    hapticFeedback.light(); // Light haptic on package selection
 
     // Animate slider thumb
     Animated.spring(sliderThumbAnim, {
@@ -164,9 +167,11 @@ export const BuyCreditsScreen: React.FC = () => {
   const handlePurchase = async () => {
     if (isPurchasing) return;
 
+    await hapticFeedback.medium(); // Medium haptic on purchase press
     setIsPurchasing(true);
     try {
       const result = await purchaseCredits(selectedPackageId);
+      await hapticFeedback.success(); // Success haptic
       Alert.alert(
         'Purchase Successful!',
         `${creditPackages[selectedPackageId].credits} credits have been added to your account. New balance: ${result.newBalance?.toFixed(2) || '0.00'} credits.`,
@@ -178,6 +183,7 @@ export const BuyCreditsScreen: React.FC = () => {
         ]
       );
     } catch (error) {
+      await hapticFeedback.error(); // Error haptic
       Alert.alert(
         'Purchase Failed',
         'There was an error processing your purchase. Please try again.',
@@ -283,6 +289,12 @@ export const BuyCreditsScreen: React.FC = () => {
             },
           ]}
         >
+          {/* Best Value Badge - show for 360 credits package (index 2) */}
+          {selectedPackageId === 2 && (
+            <View style={styles.bestValueBadge}>
+              <Text style={styles.bestValueText}>⭐ BEST VALUE</Text>
+            </View>
+          )}
           <Text style={styles.priceAmount}>${priceInDollars}</Text>
           <Text style={styles.pricePerCredit}>${pricePerCredit}/credit</Text>
         </Animated.View>
@@ -432,6 +444,21 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     minWidth: 200,
     ...shadows.elevated,
+  },
+  bestValueBadge: {
+    position: 'absolute',
+    top: -12,
+    backgroundColor: colors.primary,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    ...shadows.elevated,
+  },
+  bestValueText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.white,
+    letterSpacing: 0.5,
   },
   priceAmount: {
     fontSize: 36,

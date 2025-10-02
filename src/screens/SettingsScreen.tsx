@@ -22,6 +22,7 @@ import { typography } from '../styles/typography';
 import { spacing, radius } from '../styles/global';
 import { shadows } from '../styles/shadows';
 import { Svg, Path, Rect, Circle, Polyline } from 'react-native-svg';
+import { hapticFeedback } from '../utils/haptics';
 
 type SettingsScreenNavigationProp = StackNavigationProp<NavigationParamList, 'Settings'>;
 
@@ -38,8 +39,11 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   icon,
   isAccent = false,
 }) => (
-  <Pressable 
-    onPress={onPress} 
+  <Pressable
+    onPress={() => {
+      hapticFeedback.light();
+      onPress();
+    }}
     style={({ pressed }) => [
       styles.actionBtn,
       isAccent && styles.actionBtnAccent,
@@ -94,19 +98,26 @@ export const SettingsScreen: React.FC = () => {
   }, []);
 
   const handleSignOut = () => {
+    hapticFeedback.light();
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => hapticFeedback.light()
+        },
         {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
             try {
+              await hapticFeedback.warning();
               await signOut();
             } catch (error) {
               console.error('Sign out error:', error);
+              await hapticFeedback.error();
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           }
