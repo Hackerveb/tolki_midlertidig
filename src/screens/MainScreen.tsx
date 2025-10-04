@@ -907,7 +907,7 @@ export const MainScreen: React.FC = () => {
             <Text style={styles.statusTextConnecting}>Connecting to translator...</Text>
           )}
           {recordingState === 'recording' && (
-            <Text style={styles.statusTextRecording}>🎤 Listening & Translating</Text>
+            <Text style={styles.statusTextRecording}>Listening & Translating</Text>
           )}
         </View>
 
