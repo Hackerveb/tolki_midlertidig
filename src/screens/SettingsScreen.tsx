@@ -147,62 +147,49 @@ export const SettingsScreen: React.FC = () => {
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* User Profile Section */}
+        {/* User Profile Section with Credits */}
         <View style={styles.userSection}>
           <View style={styles.userAvatar}>
             <Text style={styles.userAvatarText}>{initials}</Text>
           </View>
           <Text style={styles.userName}>{displayName}</Text>
           <Text style={styles.userEmail}>{email}</Text>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.logoutBtn,
-              pressed && styles.btnPressed
-            ]} 
-            onPress={handleSignOut}
-          >
-            <Text style={styles.logoutBtnText}>Sign Out</Text>
-          </Pressable>
-        </View>
 
-        {/* Credits Section */}
-        <NeumorphicCard style={styles.subscriptionSection}>
-          <View style={styles.sectionHeader}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Circle cx="12" cy="12" r="10" stroke={colors.foreground} strokeWidth="2" />
-              <Polyline
-                points="12 6 12 12 16 14"
-                stroke={colors.foreground}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
-            <Text style={styles.sectionTitle}>Credits</Text>
-          </View>
-
+          {/* Credits Display */}
           <Animated.View style={[
-            styles.creditsDisplay,
+            styles.creditsDisplayCompact,
             {
               opacity: creditAnimation,
               transform: [{
                 scale: creditAnimation.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0.8, 1],
+                  outputRange: [0.95, 1],
                 }),
               }],
             },
           ]}>
-            <Text style={styles.creditsNumber}>{balance}</Text>
-            <Text style={styles.creditsLabel}>credits remaining</Text>
-            <Text style={styles.creditsDescription}>{balance} minutes of translation</Text>
+            <View style={styles.creditsBadge}>
+              <Text style={styles.creditsNumberCompact}>{balance}</Text>
+              <Text style={styles.creditsLabelCompact}>credits</Text>
+            </View>
+            <Text style={styles.creditsDescriptionCompact}>≈ {balance} min</Text>
             {isLowOnCredits && (
-              <View style={styles.lowCreditsWarning}>
-                <Text style={styles.lowCreditsText}>⚠️ Running low on credits</Text>
+              <View style={styles.lowCreditsWarningCompact}>
+                <Text style={styles.lowCreditsTextCompact}>⚠️ Low</Text>
               </View>
             )}
           </Animated.View>
-        </NeumorphicCard>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.logoutBtn,
+              pressed && styles.btnPressed
+            ]}
+            onPress={handleSignOut}
+          >
+            <Text style={styles.logoutBtnText}>Sign Out</Text>
+          </Pressable>
+        </View>
 
         {/* Management Actions */}
         <NeumorphicCard style={styles.profileSection}>
@@ -227,28 +214,6 @@ export const SettingsScreen: React.FC = () => {
             title="Billing History"
             onPress={() => navigation.navigate('BillingHistory')}
             icon={<ArrowIcon />}
-          />
-        </NeumorphicCard>
-
-        {/* Profile Management */}
-        <NeumorphicCard style={styles.profileSection}>
-          <View style={styles.sectionHeader}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={colors.foreground} strokeWidth="2" />
-              <Circle cx="12" cy="7" r="4" stroke={colors.foreground} strokeWidth="2" />
-            </Svg>
-            <Text style={styles.sectionTitle}>Profile</Text>
-          </View>
-
-          <ActionButton
-            title="Edit Profile"
-            onPress={() => navigation.navigate('EditProfile')}
-            icon={<ArrowIcon />}
-          />
-          <ActionButton
-            title="Change Password"
-            onPress={() => Alert.alert('Change Password', 'Change password functionality would be implemented here')}
-            isAccent
           />
         </NeumorphicCard>
 
@@ -289,6 +254,28 @@ export const SettingsScreen: React.FC = () => {
             title="Terms of Service"
             onPress={() => openURL(TERMS_OF_SERVICE_URL)}
             icon={<ArrowIcon />}
+          />
+        </NeumorphicCard>
+
+        {/* Profile Management */}
+        <NeumorphicCard style={styles.profileSection}>
+          <View style={styles.sectionHeader}>
+            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke={colors.foreground} strokeWidth="2" />
+              <Circle cx="12" cy="7" r="4" stroke={colors.foreground} strokeWidth="2" />
+            </Svg>
+            <Text style={styles.sectionTitle}>Profile</Text>
+          </View>
+
+          <ActionButton
+            title="Edit Profile"
+            onPress={() => navigation.navigate('EditProfile')}
+            icon={<ArrowIcon />}
+          />
+          <ActionButton
+            title="Change Password"
+            onPress={() => Alert.alert('Change Password', 'Change password functionality would be implemented here')}
+            isAccent
           />
         </NeumorphicCard>
       </ScrollView>
@@ -357,11 +344,54 @@ const styles = StyleSheet.create({
     ...shadows.pressed,
   },
 
-  // Subscription Section
-  subscriptionSection: {
-    padding: 20,
+  // Credits Display (Compact - integrated in user section)
+  creditsDisplayCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
     marginBottom: 20,
+    gap: 12,
   },
+  creditsBadge: {
+    backgroundColor: colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    ...shadows.elevated,
+  },
+  creditsNumberCompact: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  creditsLabelCompact: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.white,
+    opacity: 0.9,
+  },
+  creditsDescriptionCompact: {
+    fontSize: 13,
+    color: colors.silverAlpha(0.6),
+    fontWeight: '500',
+  },
+  lowCreditsWarningCompact: {
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  lowCreditsTextCompact: {
+    fontSize: 11,
+    color: colors.white,
+    fontWeight: '600',
+  },
+
+  // Section Headers
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -372,109 +402,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.foreground,
-  },
-  usageMeter: {
-    marginBottom: 20,
-  },
-  usageLabel: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  usageLabelText: {
-    fontSize: 13,
-    color: colors.silver,
-  },
-  usageLabelValue: {
-    fontSize: 13,
-    color: colors.silver,
-  },
-  usageBar: {
-    height: 8,
-    backgroundColor: colors.background,
-    borderRadius: 4,
-    overflow: 'hidden',
-    ...shadows.pressed,
-  },
-  usageFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: 200,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.silverAlpha(0.2),
-  },
-  lastInfoRow: {
-    borderBottomWidth: 0,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: colors.silver,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.foreground,
-  },
-  planBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-  },
-  planBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.white,
-  },
-
-  // Credits Display
-  creditsDisplay: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  creditsNumber: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 4,
-  },
-  creditsLabel: {
-    fontSize: 14,
-    color: colors.silverAlpha(0.6),
-    marginBottom: 4,
-  },
-  creditsDescription: {
-    fontSize: 12,
-    color: colors.silverAlpha(0.5),
-    marginBottom: 12,
-  },
-  lowCreditsWarning: {
-    backgroundColor: '#FF6B6B20',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FF6B6B40',
-  },
-  lowCreditsText: {
-    fontSize: 12,
-    color: '#FF6B6B',
-    fontWeight: '600',
   },
 
   // Profile Section
