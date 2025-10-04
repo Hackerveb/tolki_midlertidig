@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import * as WebBrowser from 'expo-web-browser';
+import Svg, { Path } from 'react-native-svg';
 import { NeumorphicCard } from '../components/NeumorphicCard';
 import { NeumorphicButton } from '../components/NeumorphicButton';
 import { colors } from '../styles/colors';
@@ -22,6 +24,9 @@ import { typography } from '../styles/typography';
 import { spacing, radius } from '../styles/global';
 import { shadows } from '../styles/shadows';
 import { NavigationParamList } from '../types';
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../constants/legal';
+import { hapticFeedback } from '../utils/haptics';
+import { validateEmail, validatePassword, getPasswordStrengthColor, getPasswordRequirementsList } from '../utils/validation';
 
 type SignUpScreenNavigationProp = StackNavigationProp<NavigationParamList, 'SignUp'>;
 
@@ -36,6 +41,54 @@ export const SignUpScreen: React.FC = () => {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+
+  const openURL = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      Alert.alert('Error', 'Unable to open link. Please try again.');
+    }
+  };
+
+  // Validate email on blur
+  const handleEmailBlur = () => {
+    if (emailAddress.trim().length > 0) {
+      const validation = validateEmail(emailAddress);
+      setEmailError(validation.isValid ? null : validation.message || 'Invalid email');
+    }
+  };
+
+  // Clear email error on focus
+  const handleEmailFocus = () => {
+    setEmailError(null);
+  };
+
+  // Show password requirements when password field is focused
+  const handlePasswordFocus = () => {
+    setShowPasswordRequirements(true);
+  };
+
+  // Hide password requirements when password field loses focus
+  const handlePasswordBlur = () => {
+    setShowPasswordRequirements(false);
+  };
+
+  // Get current password validation
+  const passwordValidation = validatePassword(password);
+  const emailValidation = validateEmail(emailAddress);
+
+  // Check if all required fields are filled AND valid
+  const isFormValid = emailValidation.isValid &&
+                      passwordValidation.isValid &&
+                      firstName.trim() !== '' &&
+                      lastName.trim() !== '' &&
+                      agreedToTerms;
+
+  const isButtonDisabled = loading || !isFormValid;
 
   const onSignUpPress = async () => {
     if (!isLoaded) return;
@@ -47,6 +100,12 @@ export const SignUpScreen: React.FC = () => {
 
     if (password.length < 8) {
       Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+
+    if (!agreedToTerms) {
+      await hapticFeedback.warning();
+      Alert.alert('Agreement Required', 'Please agree to the Terms of Service and Privacy Policy to continue.');
       return;
     }
 
@@ -354,7 +413,7 @@ export const SignUpScreen: React.FC = () => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, emailError && styles.inputContainerError]}>
                 <TextInput
                   style={styles.input}
                   autoCapitalize="none"
@@ -362,39 +421,131 @@ export const SignUpScreen: React.FC = () => {
                   placeholder="Enter your email"
                   placeholderTextColor={colors.silverAlpha(0.5)}
                   onChangeText={setEmailAddress}
+                  onBlur={handleEmailBlur}
+                  onFocus={handleEmailFocus}
                   keyboardType="email-address"
                   autoComplete="email"
                   editable={!loading}
                 />
               </View>
+              {emailError && (
+                <Text style={styles.errorText}>{emailError}</Text>
+              )}
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Password</Text>
+                {password.length > 0 && (
+                  <View style={[styles.strengthBadge, { backgroundColor: getPasswordStrengthColor(passwordValidation.strength) }]}>
+                    <Text style={styles.strengthText}>
+                      {passwordValidation.strength === 'weak' && 'Weak'}
+                      {passwordValidation.strength === 'medium' && 'Good'}
+                      {passwordValidation.strength === 'strong' && 'Strong'}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
                   value={password}
-                  placeholder="Minimum 8 characters"
+                  placeholder="Create a strong password"
                   placeholderTextColor={colors.silverAlpha(0.5)}
                   secureTextEntry
                   onChangeText={setPassword}
+                  onFocus={handlePasswordFocus}
+                  onBlur={handlePasswordBlur}
                   autoComplete="new-password"
                   editable={!loading}
                 />
               </View>
+
+              {/* Password requirements - shown when focused or has errors */}
+              {(showPasswordRequirements || (password.length > 0 && !passwordValidation.isValid)) && (
+                <View style={styles.passwordRequirements}>
+                  <Text style={styles.requirementsTitle}>Password must contain:</Text>
+                  {getPasswordRequirementsList().map((requirement, index) => {
+                    const isMet = !passwordValidation.errors.includes(requirement);
+                    return (
+                      <View key={index} style={styles.requirementRow}>
+                        <View style={[styles.requirementDot, isMet && styles.requirementDotMet]} />
+                        <Text style={[styles.requirementText, isMet && styles.requirementTextMet]}>
+                          {requirement}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
+
+            {/* Legal Agreement Checkbox */}
+            <Pressable
+              style={styles.checkboxContainer}
+              onPress={() => {
+                hapticFeedback.selection();
+                setAgreedToTerms(!agreedToTerms);
+              }}
+              disabled={loading}
+            >
+              <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                {agreedToTerms && (
+                  <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M20 6L9 17l-5-5"
+                      stroke={colors.white}
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                )}
+              </View>
+              <Text style={styles.checkboxText}>
+                I agree to the{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    hapticFeedback.light();
+                    openURL(TERMS_OF_SERVICE_URL);
+                  }}
+                >
+                  Terms of Service
+                </Text>{' '}
+                and{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    hapticFeedback.light();
+                    openURL(PRIVACY_POLICY_URL);
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </Pressable>
 
             <NeumorphicButton
               onPress={onSignUpPress}
-              style={styles.signInButton}
-              disabled={loading}
+              style={[
+                styles.signInButton,
+                isButtonDisabled && styles.signInButtonDisabled,
+              ]}
+              disabled={isButtonDisabled}
               variant="primary"
             >
               {loading ? (
                 <ActivityIndicator color={colors.white} />
               ) : (
-                <Text style={styles.signInButtonText}>Sign Up</Text>
+                <Text style={[
+                  styles.signInButtonText,
+                  isButtonDisabled && styles.signInButtonTextDisabled,
+                ]}>
+                  Sign Up
+                </Text>
               )}
             </NeumorphicButton>
 
@@ -482,16 +633,89 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     minHeight: 50,
   },
+  inputContainerError: {
+    borderWidth: 1,
+    borderColor: '#FF6B6B',
+  },
+  errorText: {
+    ...typography.caption,
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  strengthBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  strengthText: {
+    ...typography.caption,
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  passwordRequirements: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
+    ...shadows.soft,
+  },
+  requirementsTitle: {
+    ...typography.caption,
+    color: colors.foreground,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  requirementDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.silverAlpha(0.4),
+    marginRight: spacing.sm,
+  },
+  requirementDotMet: {
+    backgroundColor: '#66BB6A',
+  },
+  requirementText: {
+    ...typography.caption,
+    color: colors.silverAlpha(0.7),
+    fontSize: 12,
+  },
+  requirementTextMet: {
+    color: '#66BB6A',
+    fontWeight: '500',
+  },
   signInButton: {
     marginTop: spacing.lg,
     marginBottom: spacing.xl,
     backgroundColor: colors.primary,
     minHeight: 56,
   },
+  signInButtonDisabled: {
+    backgroundColor: colors.silverAlpha(0.3),
+    opacity: 0.5,
+  },
   signInButtonText: {
     ...typography.button,
     color: colors.white,
     fontWeight: '600',
+  },
+  signInButtonTextDisabled: {
+    color: colors.silverAlpha(0.5),
   },
   footer: {
     flexDirection: 'row',
@@ -507,5 +731,41 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.primary,
     fontWeight: '600',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    gap: spacing.sm,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.silverAlpha(0.4),
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    ...shadows.subtle,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkboxText: {
+    ...typography.caption,
+    fontSize: 13,
+    color: colors.silverAlpha(0.8),
+    lineHeight: 20,
+    flex: 1,
+  },
+  legalLink: {
+    color: colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

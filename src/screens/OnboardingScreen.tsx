@@ -26,6 +26,7 @@ import { typography } from '../styles/typography';
 import { spacing, radius } from '../styles/global';
 import { shadows } from '../styles/shadows';
 import { hapticFeedback } from '../utils/haptics';
+import { validateEmail } from '../utils/validation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -152,6 +153,24 @@ export const OnboardingScreen: React.FC = () => {
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Validate email on blur
+  const handleEmailBlur = () => {
+    if (emailAddress.trim().length > 0) {
+      const validation = validateEmail(emailAddress);
+      setEmailError(validation.isValid ? null : validation.message || 'Invalid email');
+    }
+  };
+
+  // Clear error on focus
+  const handleEmailFocus = () => {
+    setEmailError(null);
+  };
+
+  // Check if form is valid (both fields filled AND email is valid format)
+  const emailValidation = validateEmail(emailAddress);
+  const isFormValid = emailValidation.isValid && password.trim().length > 0;
 
   const steps = [
     {
@@ -304,7 +323,7 @@ export const OnboardingScreen: React.FC = () => {
                   <View style={styles.signInForm}>
                     <View style={styles.inputGroup}>
                       <Text style={styles.inputLabel}>Email</Text>
-                      <View style={styles.inputContainer}>
+                      <View style={[styles.inputContainer, emailError && styles.inputContainerError]}>
                         <TextInput
                           style={styles.input}
                           autoCapitalize="none"
@@ -312,11 +331,16 @@ export const OnboardingScreen: React.FC = () => {
                           placeholder="Enter your email"
                           placeholderTextColor={colors.silverAlpha(0.5)}
                           onChangeText={setEmailAddress}
+                          onBlur={handleEmailBlur}
+                          onFocus={handleEmailFocus}
                           keyboardType="email-address"
                           autoComplete="email"
                           editable={!loading}
                         />
                       </View>
+                      {emailError && (
+                        <Text style={styles.errorText}>{emailError}</Text>
+                      )}
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -338,11 +362,11 @@ export const OnboardingScreen: React.FC = () => {
                     <Pressable
                       style={({ pressed }) => [
                         styles.signInButton,
-                        pressed && styles.signInButtonPressed,
-                        loading && styles.signInButtonDisabled,
+                        pressed && !loading && isFormValid && styles.signInButtonPressed,
+                        (loading || !isFormValid) && styles.signInButtonDisabled,
                       ]}
                       onPress={handleSignInPress}
-                      disabled={loading}
+                      disabled={loading || !isFormValid}
                     >
                       {loading ? (
                         <ActivityIndicator color={colors.white} />
@@ -550,6 +574,17 @@ const styles = StyleSheet.create({
     minHeight: 50,
     fontSize: 16,
   },
+  inputContainerError: {
+    borderWidth: 1,
+    borderColor: '#FF6B6B',
+  },
+  errorText: {
+    ...typography.caption,
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
   signInButton: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
@@ -566,7 +601,8 @@ const styles = StyleSheet.create({
     ...shadows.subtle,
   },
   signInButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.5,
+    backgroundColor: colors.silverAlpha(0.3),
   },
   signInButtonText: {
     ...typography.button,

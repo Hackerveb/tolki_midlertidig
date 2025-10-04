@@ -33,6 +33,10 @@ export const SignInScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Check if all required fields are filled
+  const isFormValid = emailAddress.trim() !== '' && password.trim() !== '';
+  const isButtonDisabled = loading || !isFormValid;
+
   const onSignInPress = async () => {
     if (!isLoaded) return;
 
@@ -124,14 +128,22 @@ export const SignInScreen: React.FC = () => {
 
             <NeumorphicButton
               onPress={onSignInPress}
-              style={styles.signInButton}
-              disabled={loading}
+              style={[
+                styles.signInButton,
+                isButtonDisabled && styles.signInButtonDisabled,
+              ]}
+              disabled={isButtonDisabled}
               variant="primary"
             >
               {loading ? (
                 <ActivityIndicator color={colors.white} />
               ) : (
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={[
+                  styles.signInButtonText,
+                  isButtonDisabled && styles.signInButtonTextDisabled,
+                ]}>
+                  Sign In
+                </Text>
               )}
             </NeumorphicButton>
 
@@ -217,10 +229,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     minHeight: 56,
   },
+  signInButtonDisabled: {
+    backgroundColor: colors.silverAlpha(0.3),
+    opacity: 0.5,
+  },
   signInButtonText: {
     ...typography.button,
     color: colors.white,
     fontWeight: '600',
+  },
+  signInButtonTextDisabled: {
+    color: colors.silverAlpha(0.5),
   },
   footer: {
     flexDirection: 'row',

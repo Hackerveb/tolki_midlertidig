@@ -12,6 +12,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useClerk } from '@clerk/clerk-expo';
+import * as WebBrowser from 'expo-web-browser';
 import { Header } from '../components/Header';
 import { NeumorphicCard } from '../components/NeumorphicCard';
 import { NavigationParamList } from '../types';
@@ -23,6 +24,7 @@ import { spacing, radius } from '../styles/global';
 import { shadows } from '../styles/shadows';
 import { Svg, Path, Rect, Circle, Polyline } from 'react-native-svg';
 import { hapticFeedback } from '../utils/haptics';
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../constants/legal';
 
 type SettingsScreenNavigationProp = StackNavigationProp<NavigationParamList, 'Settings'>;
 
@@ -124,6 +126,17 @@ export const SettingsScreen: React.FC = () => {
         },
       ]
     );
+  };
+
+  const openURL = async (url: string) => {
+    try {
+      await hapticFeedback.light();
+      await WebBrowser.openBrowserAsync(url);
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      await hapticFeedback.error();
+      Alert.alert('Error', 'Unable to open link. Please try again.');
+    }
   };
 
   return (
@@ -236,6 +249,46 @@ export const SettingsScreen: React.FC = () => {
             title="Change Password"
             onPress={() => Alert.alert('Change Password', 'Change password functionality would be implemented here')}
             isAccent
+          />
+        </NeumorphicCard>
+
+        {/* Legal Section */}
+        <NeumorphicCard style={styles.profileSection}>
+          <View style={styles.sectionHeader}>
+            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                stroke={colors.foreground}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <Path
+                d="M14 2v6h6"
+                stroke={colors.foreground}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <Path
+                d="M12 18v-6M9 15h6"
+                stroke={colors.foreground}
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </Svg>
+            <Text style={styles.sectionTitle}>Legal</Text>
+          </View>
+
+          <ActionButton
+            title="Privacy Policy"
+            onPress={() => openURL(PRIVACY_POLICY_URL)}
+            icon={<ArrowIcon />}
+          />
+          <ActionButton
+            title="Terms of Service"
+            onPress={() => openURL(TERMS_OF_SERVICE_URL)}
+            icon={<ArrowIcon />}
           />
         </NeumorphicCard>
       </ScrollView>
