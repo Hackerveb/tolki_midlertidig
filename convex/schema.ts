@@ -11,6 +11,8 @@ export default defineSchema({
     defaultLanguage: v.optional(v.string()),
     createdAt: v.number(),
     lastActive: v.number(),
+    // TEMPORARY: Remove this line AFTER running migrations:removeHasSeenOnboardingField
+    hasSeenOnboarding: v.optional(v.boolean()),
   })
     .index("by_clerk_id", ["clerkId"]),
 

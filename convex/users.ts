@@ -184,3 +184,61 @@ export const getUserDetails = query({
   },
 });
 
+// Delete user account and all associated data
+export const deleteUserAccount = mutation({
+  args: {
+    clerkId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find the user
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // End any active sessions first
+    const activeSessions = await ctx.db
+      .query("usageSessions")
+      .withIndex("by_active", (q) =>
+        q.eq("userId", user._id).eq("isActive", true)
+      )
+      .collect();
+
+    for (const session of activeSessions) {
+      await ctx.db.patch(session._id, {
+        isActive: false,
+        endedAt: Date.now(),
+      });
+    }
+
+    // Delete all usage sessions
+    const allSessions = await ctx.db
+      .query("usageSessions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const session of allSessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    // Delete all credit purchases
+    const allPurchases = await ctx.db
+      .query("creditPurchases")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const purchase of allPurchases) {
+      await ctx.db.delete(purchase._id);
+    }
+
+    // Finally, delete the user
+    await ctx.db.delete(user._id);
+
+    return { success: true, message: "Account deleted successfully" };
+  },
+});
+

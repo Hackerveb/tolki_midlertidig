@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as livekit from "../livekit.js";
+import type * as migrations from "../migrations.js";
 import type * as payments from "../payments.js";
 import type * as usageSessions from "../usageSessions.js";
 import type * as users from "../users.js";
@@ -28,6 +29,7 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   livekit: typeof livekit;
+  migrations: typeof migrations;
   payments: typeof payments;
   usageSessions: typeof usageSessions;
   users: typeof users;

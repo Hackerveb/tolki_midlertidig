@@ -32,11 +32,11 @@ interface CreditPackage {
 }
 
 const creditPackages: CreditPackage[] = [
-  { id: 0, credits: 30, price: 700 },
-  { id: 1, credits: 60, price: 1200 },
-  { id: 2, credits: 360, price: 6900 },
-  { id: 3, credits: 720, price: 12900 },
-  { id: 4, credits: 1440, price: 22900 },
+  { id: 0, credits: 30, price: 599 },
+  { id: 1, credits: 60, price: 1099 },
+  { id: 2, credits: 360, price: 5999 },
+  { id: 3, credits: 720, price: 11499 },
+  { id: 4, credits: 1440, price: 21999 },
 ];
 
 export const BuyCreditsScreen: React.FC = () => {

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,13 @@ import {
   SafeAreaView,
   Animated,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useClerk } from '@clerk/clerk-expo';
+import { useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 import * as WebBrowser from 'expo-web-browser';
 import { Header } from '../components/Header';
 import { NeumorphicCard } from '../components/NeumorphicCard';
@@ -74,10 +77,14 @@ const ArrowIcon = () => (
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { signOut } = useClerk();
-  const { displayName, email, initials } = useCurrentUser();
+  const { displayName, email, initials, clerkUser } = useCurrentUser();
   const { balance, isLowOnCredits } = useCredits();
   const creditAnimation = useRef(new Animated.Value(0)).current;
   const shimmerAnimation = useRef(new Animated.Value(-1)).current;
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Mutation for account deletion
+  const deleteUserAccount = useMutation(api.users.deleteUserAccount);
 
   useEffect(() => {
     // Animate credit display on mount
@@ -98,6 +105,84 @@ export const SettingsScreen: React.FC = () => {
       })
     ).start();
   }, []);
+
+  const handleDeleteAccount = () => {
+    hapticFeedback.light();
+
+    Alert.alert(
+      'Delete Account',
+      `Are you sure you want to delete your account?\n\n⚠️ WARNING:\n\n• This action is PERMANENT and cannot be undone\n• All your data will be deleted\n• Your remaining ${balance.toFixed(2)} credits will be forfeited\n• Any active sessions will be ended immediately\n\nIf you have subscriptions, please cancel them separately through the App Store before deleting your account.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => hapticFeedback.light()
+        },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            // Show second confirmation for extra safety
+            Alert.alert(
+              'Final Confirmation',
+              'This is your last chance. Delete your account permanently?',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                  onPress: () => hapticFeedback.light()
+                },
+                {
+                  text: 'Yes, Delete Forever',
+                  style: 'destructive',
+                  onPress: async () => {
+                    if (!clerkUser?.id) {
+                      Alert.alert('Error', 'User not found. Please try signing out and back in.');
+                      return;
+                    }
+
+                    setIsDeletingAccount(true);
+                    await hapticFeedback.warning();
+
+                    try {
+                      // Step 1: Delete all user data from Convex database
+                      await deleteUserAccount({ clerkId: clerkUser.id });
+
+                      // Step 2: Delete the Clerk user account (this also signs them out)
+                      await clerkUser.delete();
+
+                      await hapticFeedback.success();
+
+                      // User will be automatically redirected to auth screen after deletion
+                    } catch (error: any) {
+                      console.error('Account deletion error:', error);
+                      await hapticFeedback.error();
+                      setIsDeletingAccount(false);
+
+                      // Provide specific error messages
+                      let errorMessage = 'Failed to delete your account. Please try again or contact support if the problem persists.';
+
+                      if (error?.message?.includes('not allowed')) {
+                        errorMessage = 'Account deletion is currently disabled. Please contact support for assistance.';
+                      } else if (error?.message?.includes('network')) {
+                        errorMessage = 'Network error. Please check your connection and try again.';
+                      }
+
+                      Alert.alert(
+                        'Deletion Failed',
+                        errorMessage,
+                        [{ text: 'OK' }]
+                      );
+                    }
+                  }
+                }
+              ]
+            );
+          }
+        }
+      ]
+    );
+  };
 
   const handleSignOut = () => {
     hapticFeedback.light();
@@ -277,6 +362,39 @@ export const SettingsScreen: React.FC = () => {
             onPress={() => Alert.alert('Change Password', 'Change password functionality would be implemented here')}
             isAccent
           />
+
+          {/* Delete Account Button - Destructive Action */}
+          <View style={styles.deleteAccountContainer}>
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={isDeletingAccount}
+              style={({ pressed }) => [
+                styles.deleteAccountBtn,
+                pressed && styles.deleteAccountBtnPressed,
+                isDeletingAccount && styles.deleteAccountBtnDisabled,
+              ]}
+            >
+              {isDeletingAccount ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={styles.deleteIcon}>
+                    <Path
+                      d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                      stroke="#fff"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                  <Text style={styles.deleteAccountBtnText}>Delete Account</Text>
+                </>
+              )}
+            </Pressable>
+            <Text style={styles.deleteAccountWarning}>
+              ⚠️ This action is permanent and cannot be undone
+            </Text>
+          </View>
         </NeumorphicCard>
       </ScrollView>
     </SafeAreaView>
@@ -439,5 +557,46 @@ const styles = StyleSheet.create({
   actionBtnTextAccent: {
     color: colors.white,
     fontWeight: '600',
+  },
+
+  // Delete Account Section
+  deleteAccountContainer: {
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.silverAlpha(0.2),
+  },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: '#e74c3c',
+    borderRadius: 16,
+    marginBottom: 8,
+    ...shadows.subtle,
+  },
+  deleteAccountBtnPressed: {
+    backgroundColor: '#c0392b',
+    ...shadows.pressed,
+  },
+  deleteAccountBtnDisabled: {
+    opacity: 0.6,
+  },
+  deleteAccountBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  deleteIcon: {
+    marginRight: 4,
+  },
+  deleteAccountWarning: {
+    fontSize: 11,
+    color: colors.silverAlpha(0.6),
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
 });

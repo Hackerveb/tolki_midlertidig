@@ -10,7 +10,7 @@
     "privacy": "public",
     "primaryColor": "#62929E",
     "scheme": "tolki",
-    "privacyPolicyUrl": "https://tolki-legal.vercel.app/privacy-policy.html",
+    "privacyPolicyUrl": "https://legal.tolki.app/privacy-policy.html",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

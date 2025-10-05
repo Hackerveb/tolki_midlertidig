@@ -20,6 +20,9 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSignIn } from '@clerk/clerk-expo';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { SocialAuthButton } from '../components/SocialAuthButton';
+import { AuthDivider } from '../components/AuthDivider';
+import { useOAuthFlow, useWarmUpBrowser } from '../hooks/useOAuth';
 import { NavigationParamList } from '../types';
 import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
@@ -145,14 +148,19 @@ const StartIcon = () => (
 export const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation<OnboardingNavigationProp>();
   const { signIn, setActive, isLoaded } = useSignIn();
+  const { startGoogleOAuth, startAppleOAuth } = useOAuthFlow();
   const [currentStep, setCurrentStep] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const creditCountAnim = useRef(new Animated.Value(10)).current;
+
+  // Warm up browser for Android OAuth
+  useWarmUpBrowser();
 
   // Sign in state
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
 
   // Validate email on blur
@@ -171,6 +179,7 @@ export const OnboardingScreen: React.FC = () => {
   // Check if form is valid (both fields filled AND email is valid format)
   const emailValidation = validateEmail(emailAddress);
   const isFormValid = emailValidation.isValid && password.trim().length > 0;
+  const isButtonDisabled = loading || !isFormValid || oauthLoading !== null;
 
   const steps = [
     {
@@ -243,6 +252,32 @@ export const OnboardingScreen: React.FC = () => {
       hapticFeedback.error();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setOauthLoading('google');
+      await startGoogleOAuth();
+    } catch (error: any) {
+      if (error?.message) {
+        Alert.alert('Sign In Failed', error.message);
+      }
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setOauthLoading('apple');
+      await startAppleOAuth();
+    } catch (error: any) {
+      if (error?.message) {
+        Alert.alert('Sign In Failed', error.message);
+      }
+    } finally {
+      setOauthLoading(null);
     }
   };
 
@@ -362,11 +397,11 @@ export const OnboardingScreen: React.FC = () => {
                     <Pressable
                       style={({ pressed }) => [
                         styles.signInButton,
-                        pressed && !loading && isFormValid && styles.signInButtonPressed,
-                        (loading || !isFormValid) && styles.signInButtonDisabled,
+                        pressed && !isButtonDisabled && styles.signInButtonPressed,
+                        isButtonDisabled && styles.signInButtonDisabled,
                       ]}
                       onPress={handleSignInPress}
-                      disabled={loading || !isFormValid}
+                      disabled={isButtonDisabled}
                     >
                       {loading ? (
                         <ActivityIndicator color={colors.white} />
@@ -374,6 +409,29 @@ export const OnboardingScreen: React.FC = () => {
                         <Text style={styles.signInButtonText}>Sign In</Text>
                       )}
                     </Pressable>
+
+                    {/* Divider */}
+                    <AuthDivider />
+
+                    {/* Social Auth Buttons - Icon Only */}
+                    <View style={styles.socialButtonsContainer}>
+                      <SocialAuthButton
+                        provider="google"
+                        onPress={handleGoogleSignIn}
+                        disabled={loading || oauthLoading !== null}
+                        loading={oauthLoading === 'google'}
+                        mode="signin"
+                        iconOnly
+                      />
+                      <SocialAuthButton
+                        provider="apple"
+                        onPress={handleAppleSignIn}
+                        disabled={loading || oauthLoading !== null}
+                        loading={oauthLoading === 'apple'}
+                        mode="signin"
+                        iconOnly
+                      />
+                    </View>
 
                     <View style={styles.signUpLinkContainer}>
                       <Text style={styles.signUpLinkText}>Don't have an account? </Text>
@@ -551,6 +609,13 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     marginTop: spacing.xl,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   inputGroup: {
     marginBottom: spacing.lg,

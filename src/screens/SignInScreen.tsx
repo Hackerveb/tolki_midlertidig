@@ -17,6 +17,9 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { NeumorphicCard } from '../components/NeumorphicCard';
 import { NeumorphicButton } from '../components/NeumorphicButton';
+import { SocialAuthButton } from '../components/SocialAuthButton';
+import { AuthDivider } from '../components/AuthDivider';
+import { useOAuthFlow, useWarmUpBrowser } from '../hooks/useOAuth';
 import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { spacing, radius } from '../styles/global';
@@ -28,14 +31,19 @@ type SignInScreenNavigationProp = StackNavigationProp<NavigationParamList, 'Sign
 export const SignInScreen: React.FC = () => {
   const { signIn, setActive, isLoaded } = useSignIn();
   const navigation = useNavigation<SignInScreenNavigationProp>();
+  const { startGoogleOAuth, startAppleOAuth } = useOAuthFlow();
+
+  // Warm up browser for Android OAuth
+  useWarmUpBrowser();
 
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
 
   // Check if all required fields are filled
   const isFormValid = emailAddress.trim() !== '' && password.trim() !== '';
-  const isButtonDisabled = loading || !isFormValid;
+  const isButtonDisabled = loading || !isFormValid || oauthLoading !== null;
 
   const onSignInPress = async () => {
     if (!isLoaded) return;
@@ -72,6 +80,32 @@ export const SignInScreen: React.FC = () => {
       Alert.alert('Sign In Failed', errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setOauthLoading('google');
+      await startGoogleOAuth();
+    } catch (error: any) {
+      if (error?.message) {
+        Alert.alert('Sign In Failed', error.message);
+      }
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setOauthLoading('apple');
+      await startAppleOAuth();
+    } catch (error: any) {
+      if (error?.message) {
+        Alert.alert('Sign In Failed', error.message);
+      }
+    } finally {
+      setOauthLoading(null);
     }
   };
 
@@ -147,6 +181,29 @@ export const SignInScreen: React.FC = () => {
               )}
             </NeumorphicButton>
 
+            {/* Divider */}
+            <AuthDivider />
+
+            {/* Social Auth Buttons - Icon Only */}
+            <View style={styles.socialButtonsContainer}>
+              <SocialAuthButton
+                provider="google"
+                onPress={handleGoogleSignIn}
+                disabled={loading || oauthLoading !== null}
+                loading={oauthLoading === 'google'}
+                mode="signin"
+                iconOnly
+              />
+              <SocialAuthButton
+                provider="apple"
+                onPress={handleAppleSignIn}
+                disabled={loading || oauthLoading !== null}
+                loading={oauthLoading === 'apple'}
+                mode="signin"
+                iconOnly
+              />
+            </View>
+
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account?</Text>
               <Pressable
@@ -202,6 +259,13 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: spacing.xl,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   inputGroup: {
     marginBottom: spacing.lg,

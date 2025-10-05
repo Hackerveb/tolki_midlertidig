@@ -44,3 +44,14 @@ export type NavigationParamList = {
   SignIn: undefined;
   SignUp: undefined;
 };
+
+// OAuth types
+export type OAuthStrategy = 'oauth_google' | 'oauth_apple';
+
+export type OAuthProvider = 'google' | 'apple';
+
+export interface OAuthError {
+  code: string;
+  message: string;
+  longMessage?: string;
+}

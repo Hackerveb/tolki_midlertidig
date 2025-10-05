@@ -19,6 +19,9 @@ import * as WebBrowser from 'expo-web-browser';
 import Svg, { Path } from 'react-native-svg';
 import { NeumorphicCard } from '../components/NeumorphicCard';
 import { NeumorphicButton } from '../components/NeumorphicButton';
+import { SocialAuthButton } from '../components/SocialAuthButton';
+import { AuthDivider } from '../components/AuthDivider';
+import { useOAuthFlow, useWarmUpBrowser } from '../hooks/useOAuth';
 import { colors } from '../styles/colors';
 import { typography } from '../styles/typography';
 import { spacing, radius } from '../styles/global';
@@ -33,6 +36,10 @@ type SignUpScreenNavigationProp = StackNavigationProp<NavigationParamList, 'Sign
 export const SignUpScreen: React.FC = () => {
   const { isLoaded, signUp, setActive } = useSignUp();
   const navigation = useNavigation<SignUpScreenNavigationProp>();
+  const { startGoogleOAuth, startAppleOAuth } = useOAuthFlow();
+
+  // Warm up browser for Android OAuth
+  useWarmUpBrowser();
 
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +48,7 @@ export const SignUpScreen: React.FC = () => {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
@@ -88,7 +96,7 @@ export const SignUpScreen: React.FC = () => {
                       lastName.trim() !== '' &&
                       agreedToTerms;
 
-  const isButtonDisabled = loading || !isFormValid;
+  const isButtonDisabled = loading || !isFormValid || oauthLoading !== null;
 
   const onSignUpPress = async () => {
     if (!isLoaded) return;
@@ -295,6 +303,32 @@ export const SignUpScreen: React.FC = () => {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    try {
+      setOauthLoading('google');
+      await startGoogleOAuth();
+    } catch (error: any) {
+      if (error?.message) {
+        Alert.alert('Sign Up Failed', error.message);
+      }
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleAppleSignUp = async () => {
+    try {
+      setOauthLoading('apple');
+      await startAppleOAuth();
+    } catch (error: any) {
+      if (error?.message) {
+        Alert.alert('Sign Up Failed', error.message);
+      }
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
   if (pendingVerification) {
     return (
       <SafeAreaView style={styles.container}>
@@ -373,11 +407,6 @@ export const SignUpScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Sign up to get started</Text>
-          </View>
-
           <NeumorphicCard style={styles.formCard}>
             <View style={styles.row}>
               <View style={[styles.inputGroup, styles.halfWidth]}>
@@ -549,6 +578,29 @@ export const SignUpScreen: React.FC = () => {
               )}
             </NeumorphicButton>
 
+            {/* Divider */}
+            <AuthDivider />
+
+            {/* Social Auth Buttons - Icon Only */}
+            <View style={styles.socialButtonsContainer}>
+              <SocialAuthButton
+                provider="google"
+                onPress={handleGoogleSignUp}
+                disabled={loading || oauthLoading !== null}
+                loading={oauthLoading === 'google'}
+                mode="signup"
+                iconOnly
+              />
+              <SocialAuthButton
+                provider="apple"
+                onPress={handleAppleSignUp}
+                disabled={loading || oauthLoading !== null}
+                loading={oauthLoading === 'apple'}
+                mode="signup"
+                iconOnly
+              />
+            </View>
+
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account?</Text>
               <Pressable
@@ -605,6 +657,13 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: spacing.xl,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   row: {
     flexDirection: 'row',
