@@ -40,10 +40,10 @@ export const startSession = mutation({
       });
     }
 
-    // Deduct minimum session charge (0.05 credits = 3 seconds)
-    const minimumCharge = 0.05;
+    // Deduct minimum session charge (0.15 credits = 3 seconds at 3 credits/minute)
+    const minimumCharge = 0.15;
     if (user.credits < minimumCharge) {
-      throw new Error("Insufficient credits. Minimum 0.05 credits required");
+      throw new Error("Insufficient credits. Minimum 0.15 credits required");
     }
 
     // Deduct minimum charge immediately
@@ -93,8 +93,8 @@ export const endSession = mutation({
     const storedSecondsUsed = session.secondsUsed || 0;
     const totalSecondsUsed = Math.max(actualSecondsUsed, storedSecondsUsed);
     const finalCreditsUsed = Math.max(
-      0.05, // Minimum charge
-      Math.round((totalSecondsUsed / 60) * 100) / 100
+      0.15, // Minimum charge
+      Math.round((totalSecondsUsed / 60) * 3 * 100) / 100
     );
 
     // Update session with final values
@@ -141,15 +141,15 @@ export const updateFractionalCredits = mutation({
       throw new Error("No active session found");
     }
 
-    // Calculate credits to deduct (0.05 per 3 seconds = 1 credit per 60 seconds)
-    const creditsToDeduct = (args.secondsToAdd / 60);
+    // Calculate credits to deduct (0.15 per 3 seconds = 3 credits per 60 seconds)
+    const creditsToDeduct = (args.secondsToAdd / 60) * 3;
 
     // Check if user has enough credits
     if (user.credits < creditsToDeduct) {
       // End session if insufficient credits
       const currentSeconds = activeSession.secondsUsed || 0;
       const finalSecondsUsed = currentSeconds + args.secondsToAdd;
-      const finalCreditsUsed = Math.round((finalSecondsUsed / 60) * 100) / 100;
+      const finalCreditsUsed = Math.round((finalSecondsUsed / 60) * 3 * 100) / 100;
 
       await ctx.db.patch(activeSession._id, {
         isActive: false,
@@ -170,7 +170,7 @@ export const updateFractionalCredits = mutation({
     // Update seconds used (handle optional field for migration)
     const currentSecondsUsed = activeSession.secondsUsed || 0;
     const newSecondsUsed = currentSecondsUsed + args.secondsToAdd;
-    const newCreditsUsed = Math.round((newSecondsUsed / 60) * 100) / 100;
+    const newCreditsUsed = Math.round((newSecondsUsed / 60) * 3 * 100) / 100;
 
     // Deduct fractional credits from user
     const newBalance = Math.round((user.credits - creditsToDeduct) * 100) / 100;

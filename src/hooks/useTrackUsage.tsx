@@ -110,7 +110,7 @@ export const useTrackUsage = (params?: UseTrackUsageParams) => {
 
       setSessionId(newSessionId);
       setIsTracking(true);
-      setSessionCreditsUsed(0.05); // Minimum charge already applied
+      setSessionCreditsUsed(0.15); // Minimum charge already applied
       setSessionSecondsUsed(3); // Minimum 3 seconds
       startTimeRef.current = Date.now();
 
@@ -123,7 +123,7 @@ export const useTrackUsage = (params?: UseTrackUsageParams) => {
           const actualSeconds = Math.floor((Date.now() - (startTimeRef.current || Date.now())) / 1000);
           const secondsToAdd = 3; // Add 3 seconds each interval
 
-          console.log('[Credit Deduction]', new Date().toISOString(), 'Deducting 0.05 credits');
+          console.log('[Credit Deduction]', new Date().toISOString(), 'Deducting 0.15 credits');
 
           const result = await updateFractionalCredits({
             clerkId: clerkUser.id,
@@ -134,7 +134,7 @@ export const useTrackUsage = (params?: UseTrackUsageParams) => {
           setSessionSecondsUsed(result.secondsUsed);
 
           // Stop tracking if credits run out
-          if (result.creditsRemaining <= 0.05) {
+          if (result.creditsRemaining <= 0.15) {
             console.log('Credits depleted, stopping session');
             await stopTracking();
             // Notify parent component to disconnect room
