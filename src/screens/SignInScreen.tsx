@@ -158,6 +158,13 @@ export const SignInScreen: React.FC = () => {
                   editable={!loading}
                 />
               </View>
+              <Pressable
+                onPress={() => navigation.navigate('ForgotPassword' as any)}
+                disabled={loading}
+                style={styles.forgotPasswordContainer}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </Pressable>
             </View>
 
             <NeumorphicButton
@@ -319,5 +326,15 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.primary,
     fontWeight: '600',
+  },
+  forgotPasswordContainer: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+  },
+  forgotPasswordText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 13,
   },
 });

@@ -21,6 +21,9 @@
       "config": {
         "usesNonExemptEncryption": false
       },
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"]
+      },
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs microphone access for voice translation",
         "ITSAppUsesNonExemptEncryption": false,
@@ -87,7 +90,8 @@
       "expo-secure-store",
       "expo-web-browser",
       "@livekit/react-native-expo-plugin",
-      "@config-plugins/react-native-webrtc"
+      "@config-plugins/react-native-webrtc",
+      "react-native-iap"
     ],
     "extra": {
       "eas": {

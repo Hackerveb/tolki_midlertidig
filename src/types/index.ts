@@ -35,7 +35,7 @@ export interface BillingHistoryItem {
 }
 
 export type NavigationParamList = {
-  Onboarding: undefined;
+  Onboarding: { initialPage?: number } | undefined;
   Main: undefined;
   Settings: undefined;
   EditProfile: undefined;
@@ -43,6 +43,7 @@ export type NavigationParamList = {
   BillingHistory: undefined;
   SignIn: undefined;
   SignUp: undefined;
+  ForgotPassword: undefined;
 };
 
 // OAuth types

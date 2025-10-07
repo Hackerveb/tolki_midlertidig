@@ -357,11 +357,6 @@ export const SettingsScreen: React.FC = () => {
             onPress={() => navigation.navigate('EditProfile')}
             icon={<ArrowIcon />}
           />
-          <ActionButton
-            title="Change Password"
-            onPress={() => Alert.alert('Change Password', 'Change password functionality would be implemented here')}
-            isAccent
-          />
 
           {/* Delete Account Button - Destructive Action */}
           <View style={styles.deleteAccountContainer}>

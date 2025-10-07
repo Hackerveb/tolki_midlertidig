@@ -284,14 +284,14 @@ export const SignUpScreen: React.FC = () => {
             Alert.alert(
               'Already Verified',
               'Your email is already verified. Please sign in instead.',
-              [{ text: 'OK', onPress: () => navigation.navigate('SignIn' as any) }]
+              [{ text: 'OK', onPress: () => navigation.navigate('Onboarding', { initialPage: 2 }) }]
             );
           }
         } else {
           Alert.alert(
             'Already Verified',
             'Your email is already verified. Please sign in instead.',
-            [{ text: 'OK', onPress: () => navigation.navigate('SignIn' as any) }]
+            [{ text: 'OK', onPress: () => navigation.navigate('Onboarding', { initialPage: 2 }) }]
           );
         }
       } else {
@@ -604,7 +604,7 @@ export const SignUpScreen: React.FC = () => {
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account?</Text>
               <Pressable
-                onPress={() => navigation.navigate('SignIn' as any)}
+                onPress={() => navigation.navigate('Onboarding', { initialPage: 2 })}
                 disabled={loading}
               >
                 <Text style={styles.linkText}>Sign In</Text>

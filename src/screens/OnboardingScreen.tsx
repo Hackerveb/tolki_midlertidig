@@ -6,7 +6,6 @@ import {
   Pressable,
   SafeAreaView,
   Dimensions,
-  Animated,
   ScrollView,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -16,7 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSignIn } from '@clerk/clerk-expo';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -34,6 +33,7 @@ import { validateEmail } from '../utils/validation';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type OnboardingNavigationProp = StackNavigationProp<NavigationParamList, 'Onboarding'>;
+type OnboardingRouteProp = RouteProp<NavigationParamList, 'Onboarding'>;
 
 // Translation Icon
 const TranslationIcon = () => (
@@ -147,14 +147,25 @@ const StartIcon = () => (
 
 export const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation<OnboardingNavigationProp>();
+  const route = useRoute<OnboardingRouteProp>();
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startGoogleOAuth, startAppleOAuth } = useOAuthFlow();
-  const [currentStep, setCurrentStep] = useState(0);
+  const initialPage = route.params?.initialPage ?? 0;
+  const [currentStep, setCurrentStep] = useState(initialPage);
   const scrollViewRef = useRef<ScrollView>(null);
-  const creditCountAnim = useRef(new Animated.Value(10)).current;
 
   // Warm up browser for Android OAuth
   useWarmUpBrowser();
+
+  // Scroll to initial page when component mounts
+  React.useEffect(() => {
+    if (initialPage > 0) {
+      // Small delay to ensure ScrollView is ready
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ x: SCREEN_WIDTH * initialPage, animated: false });
+      }, 100);
+    }
+  }, [initialPage]);
 
   // Sign in state
   const [emailAddress, setEmailAddress] = useState('');
@@ -187,21 +198,14 @@ export const OnboardingScreen: React.FC = () => {
       icon: <TranslationIcon />,
       title: 'Welcome to TolKI',
       subtitle: 'Real-time voice translation',
-      description: 'Speak naturally in any of 63 languages, and we\'ll translate instantly. Break down language barriers effortlessly.',
-    },
-    {
-      type: 'info',
-      icon: <CreditsIcon />,
-      title: 'How Credits Work',
-      subtitle: 'Simple & transparent pricing',
-      description: '1 credit = 1 minute of translation. You start with 10 FREE credits (10 minutes). Minimum session: 3 seconds.',
+      description: 'Speak naturally in 58 languages and get instant translations. Break down language barriers effortlessly.',
     },
     {
       type: 'info',
       icon: <StartIcon />,
       title: 'Ready to Start?',
-      subtitle: 'Try your first translation',
-      description: 'Select your languages, press the button, and start speaking. It\'s that simple!',
+      subtitle: 'It\'s simple',
+      description: 'Recive free credits, choose your languages, tap the record button, and speak. Your words are translated in real-time.',
     },
     {
       type: 'signin',
@@ -289,41 +293,13 @@ export const OnboardingScreen: React.FC = () => {
   const handleSkip = () => {
     hapticFeedback.light();
     // Scroll to last page (sign in)
-    scrollViewRef.current?.scrollTo({ x: SCREEN_WIDTH * 3, animated: true });
+    scrollViewRef.current?.scrollTo({ x: SCREEN_WIDTH * 2, animated: true });
   };
-
-  // Animate credit demo on step 2
-  React.useEffect(() => {
-    if (currentStep === 1) {
-      // Animate credit countdown
-      const interval = setInterval(() => {
-        Animated.sequence([
-          Animated.timing(creditCountAnim, {
-            toValue: 9.95,
-            duration: 300,
-            useNativeDriver: false,
-          }),
-          Animated.timing(creditCountAnim, {
-            toValue: 9.90,
-            duration: 300,
-            useNativeDriver: false,
-          }),
-          Animated.timing(creditCountAnim, {
-            toValue: 10,
-            duration: 300,
-            useNativeDriver: false,
-          }),
-        ]).start();
-      }, 2000);
-
-      return () => clearInterval(interval);
-    }
-  }, [currentStep]);
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Skip button - only show on first 3 pages */}
-      {currentStep < 3 && (
+      {/* Skip button - only show on first 2 pages */}
+      {currentStep < 2 && (
         <Pressable
           style={styles.skipButton}
           onPress={handleSkip}
@@ -392,6 +368,13 @@ export const OnboardingScreen: React.FC = () => {
                           editable={!loading}
                         />
                       </View>
+                      <Pressable
+                        onPress={() => navigation.navigate('ForgotPassword')}
+                        disabled={loading}
+                        style={styles.forgotPasswordContainer}
+                      >
+                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                      </Pressable>
                     </View>
 
                     <Pressable
@@ -457,20 +440,6 @@ export const OnboardingScreen: React.FC = () => {
 
                   {/* Description */}
                   <Text style={styles.description}>{step.description}</Text>
-
-                  {/* Credit demo for step 2 */}
-                  {index === 1 && (
-                    <View style={styles.creditDemo}>
-                      <Animated.Text style={styles.creditDemoNumber}>
-                        {creditCountAnim.interpolate({
-                          inputRange: [0, 10],
-                          outputRange: ['0.00', '10.00'],
-                        })}
-                      </Animated.Text>
-                      <Text style={styles.creditDemoLabel}>credits</Text>
-                      <Text style={styles.creditDemoHint}>Watch them update in real-time!</Text>
-                    </View>
-                  )}
                 </View>
               )}
             </View>
@@ -691,5 +660,15 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 14,
+  },
+  forgotPasswordContainer: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+  },
+  forgotPasswordText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 13,
   },
 });

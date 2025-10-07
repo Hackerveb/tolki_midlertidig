@@ -8,8 +8,8 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { BuyCreditsScreen } from '../screens/BuyCreditsScreen';
 import { BillingHistoryScreen } from '../screens/BillingHistoryScreen';
-import { SignInScreen } from '../screens/SignInScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { colors } from '../styles/colors';
 
@@ -89,7 +89,7 @@ export const AppNavigator: React.FC = () => {
         </>
       ) : (
         <>
-          {/* Onboarding (shown to all unauthenticated users first) */}
+          {/* Onboarding (includes sign-in on page 4) */}
           <Stack.Screen
             name="Onboarding"
             component={OnboardingScreen}
@@ -98,12 +98,12 @@ export const AppNavigator: React.FC = () => {
             }}
           />
           <Stack.Screen
-            name="SignIn"
-            component={SignInScreen}
-          />
-          <Stack.Screen
             name="SignUp"
             component={SignUpScreen}
+          />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
           />
         </>
       )}
